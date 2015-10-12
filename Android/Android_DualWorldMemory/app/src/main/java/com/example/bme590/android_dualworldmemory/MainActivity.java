@@ -285,6 +285,8 @@ public class MainActivity extends AppCompatActivity {
     public void initializeGame(){
         TextView playerAScoreText = (TextView) findViewById(PLAYER_A_SCORE_ID);
         TextView playerBScoreText = (TextView) findViewById(PLAYER_B_SCORE_ID);
+        TextView playerATitle = (TextView) findViewById(PLAYER_A_TITLE);
+        TextView playerBTitle = (TextView) findViewById(PLAYER_B_TITLE);
 
         initializeTiles();
 
@@ -293,9 +295,12 @@ public class MainActivity extends AppCompatActivity {
         currentPlayer = true;
         gameOver = false;
 
-        scoreA = scoreB = 0;
+        scoreA = scoreB = 0;              //Update player scores and respective displays
         playerAScoreText.setText("0");
         playerBScoreText.setText("0");
+
+        playerATitle.setTypeface(null, Typeface.BOLD);   //Set up current player text marker
+        playerBTitle.setTypeface(null, Typeface.NORMAL);
 
         tilesActive = new boolean[9];
         recentlyFlippedTiles = new int[2];
