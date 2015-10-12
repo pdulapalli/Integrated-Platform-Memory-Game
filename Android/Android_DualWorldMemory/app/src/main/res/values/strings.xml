@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Dual-World Memory</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="tileName">Hi I\'m Tile1!</string>
+    <string name="another">AnotherOne</string>
+    <string name="blank">---</string>
+    <string name="action_settings">Settings</string>
+    <string name="win_title">Go team!</string>
+    <string name="PA_Win">Player A Wins!</string>
+    <string name="PB_Win">Player B Wins!</string>
+    <string name="Draw">That\'s a draw, folks!</string>
+    <string name="replay_prompt">Would you like to play again?</string>
+    <string name="Accept">Yep!</string>
+    <string name="Reject">Not now</string>
+</resources>
