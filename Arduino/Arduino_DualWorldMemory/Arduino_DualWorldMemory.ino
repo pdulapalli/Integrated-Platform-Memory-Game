@@ -35,11 +35,16 @@
 #define GAME_OVER 80
 #define alarmtime 3000
 #define switchtime 5000
-#define turn_duration 10000
+#define turn_duration 3000
 
 boolean whichPlayer, playerChanged;
 int buttonValue, lastButtonValue, winner;
 unsigned long turnstart;
+
+//TEMPORARY VARIABLES
+boolean tryWrite = true;
+uint8_t testWriteContent = 22;
+//END TEMPORARY VARIABLES
 
 AndroidAccessory acc("Manufacturer",
     "Model",
@@ -50,8 +55,7 @@ AndroidAccessory acc("Manufacturer",
 
 uint8_t playerID;
 
-void setup()
-{
+void setup(){
     //Set serial baud rate
     Serial.begin(115200);
 
@@ -67,17 +71,19 @@ void setup()
 
     Serial.print("\r\nStart");
     boolean out = acc.isConnected();
-    Serial.println(out, DEC);
+    //Serial.println(out, DEC);
     acc.powerOn();
+
 
 }
 
-void loop()
-{
+void loop(){
+  
     byte msg[1];
 
     if (acc.isConnected()) {
-
+        Serial.println("Checkpoint A");
+        
         int len;
 
         len = acc.read(msg, sizeof(msg), 1); // read data into msg variable
@@ -93,7 +99,7 @@ void loop()
                 gameStart();
             }
 
-            if (msg[0] == 35 || msg[0]==67){
+            if (msg[0] == 35 || msg[0] == 67){
                 //winner=msg[0];
                 gameConclude(msg[0]);
             }
@@ -106,8 +112,26 @@ void loop()
             Serial.print(msg[0]); //TODO: for debugging only print out certain  messages
         }
 
-        delay(10);
+        Serial.println("Checkpoint B");
 
+        delay(10);
+        Serial.println("Player Changed value = ");
+        Serial.print(playerChanged);
+
+        //TEST
+          /*
+        if(tryWrite){
+          testWriteContent--;
+          acc.write(testWriteContent);
+          testWriteContent++;
+          acc.write(testWriteContent);
+          
+          //tryWrite = false;
+        }
+        */
+        //END TEST
+        
+        
         while (playerChanged){
             len = acc.read(msg, sizeof(msg), 1);
 
@@ -118,19 +142,30 @@ void loop()
             }
             acc.write(playerID);
         }
-
+        
+        
+        Serial.println("Checkpoint C");
+        
         buttonValue = digitalRead(BUTTON_READ);
         checkChangeLED();
+
+        Serial.println("Checkpoint D");
         lastButtonValue = buttonValue;
         delay(10);
 
     }
 
     else{ //tablet not connected
+        digitalWrite(GREEN_LED , HIGH); // turn off lights
+        digitalWrite(WHITE_LED , HIGH);
+        digitalWrite(YELLOW_LED , HIGH);
+        delay(10);
         digitalWrite(GREEN_LED , LOW); // turn off lights
         digitalWrite(WHITE_LED , LOW);
         digitalWrite(YELLOW_LED , LOW);
+        delay(10);
     }
+    
 }
 
 void gameStart(){
@@ -138,7 +173,7 @@ void gameStart(){
     buttonValue = 1;
     lastButtonValue = 1;
     turnstart = millis();
-    playerChanged=0;
+    playerChanged = 0;
     playerID = 35;
 
     digitalWrite(GREEN_LED, HIGH);
@@ -174,7 +209,7 @@ void checkChangeLED(){
         playerChanged = 0;          
     }
 
-    if(whichPlayer){ //Green = p1, White = p2
+    if(whichPlayer){ //Green = p1, White = p2 (whichPlayer = true for p1)
         digitalWrite(WHITE_LED, HIGH);
         digitalWrite(GREEN_LED, LOW);
         

@@ -63,24 +63,24 @@ WinnerIdentity: (only passed when gameOver)
     Player A = 35
     Player B = 67
 
+ReceiptConfirm = 99
+
 ----
 Arduino to Android
 
-PlayerChange = 22
-
-ConfirmMessageFromAndroid = 99
+PlayerIdentity = 35 or 67;
 
 */
 
 public class MainActivity extends AppCompatActivity {
 
-    /** Android/Arduino Communication Variables **/
+    /** Given Android/Arduino Communication Variables **/
 
     // TAG is used to debug in Android logcat console
     private static final String TAG = "ArduinoAccessory";
 
     private static final String
-        ACTION_USB_PERMISSION = "com.example.bme590.android_dualworldmemory.action.USB_PERMISSION";
+            ACTION_USB_PERMISSION = "com.example.bme590.android_dualworldmemory.action.USB_PERMISSION";
 
     private UsbManager mUsbManager;
     private PendingIntent mPermissionIntent;
@@ -94,7 +94,32 @@ public class MainActivity extends AppCompatActivity {
 
     final Context context = this; //Need self-referential context for dialog alerts
 
-    /** Custom Variables **/
+    /** Custom Communication/Timing Variables and Classes **/
+    private boolean write_notRead_enable;
+    private String dataFromArduino;
+    private String dataToArduino;
+
+    private Timer timer;
+
+    private boolean timeOut;
+
+    private int countTest;
+
+    private class MyTimerTask extends TimerTask{
+
+        @Override
+        public void run() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    communicateWithArduino();
+                }
+            });
+        }
+    }
+
+
+    /** Custom Game Control Variables **/
     int[] tileAssignment; //Indices 0-8 corresponding to tile coordinates
     // (left->right, top->bottom), values in array correspond to image identity
     boolean currentPlayer; //true = Player A; false = Player B
@@ -103,7 +128,7 @@ public class MainActivity extends AppCompatActivity {
     int[] recentlyFlippedTiles; //ID of most recently flipped tiles
     boolean gameOver; //State variable indicating whether game is still in session
 
-    /** Custom Constants **/
+    /** Custom Game Constants **/
     private static final int[] tileArray = new int[]
             {
                     R.id.imageButton1,
@@ -180,6 +205,14 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         initializeGame();
+
+        write_notRead_enable = false;
+
+        timeOut = false;
+
+        timer = new Timer();
+
+        timer.schedule(new MyTimerTask(), 10, 2000); //Check 5 Hz
 
     }
 
@@ -282,7 +315,35 @@ public class MainActivity extends AppCompatActivity {
 
     /** BEGIN FUNCTIONS TO MANAGE ANDROID/ARDUINO COMMUNICATION **/
 
-    public String androidRead(){
+    public void communicateWithArduino(){ //Periodically called to handle reads/writes
+        if(write_notRead_enable){
+            androidWrite(dataToArduino);
+        } else{
+            //TextView tv = (TextView) findViewById(R.id.debugOut);
+            //tv.setText("" + countTest);
+            //countTest++;
+            dataFromArduino = androidRead();
+
+            switch(dataFromArduino){
+                case "35":
+                    timeOut = true;
+                    gameControlButtonSentry(dataFromArduino);
+                    dataToArduino = "99";
+                    write_notRead_enable = true;
+                    break;
+                case "67":
+                    timeOut = true;
+                    gameControlButtonSentry(dataFromArduino);
+                    dataToArduino = "99";
+                    write_notRead_enable = true;
+                default:
+                    break;
+            }
+
+        }
+    }
+
+    private String androidRead(){
         if(mInputStream != null){
             byte[] buffer = new byte[1];
 
@@ -310,7 +371,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public void androidWrite(String dataOut){
+    private void androidWrite(String dataOut){
         int i = Integer.parseInt(dataOut);
         byte[] out = new byte[1];
         out[0] = (byte) i;
@@ -323,6 +384,8 @@ public class MainActivity extends AppCompatActivity {
                 Log.e(TAG, "write failed", e);
             }
         }
+
+        write_notRead_enable = false; //Self-regulated write stop
     }
 
 
@@ -352,6 +415,10 @@ public class MainActivity extends AppCompatActivity {
         recentlyFlippedTiles = new int[2];
         Arrays.fill(tilesActive, true);
         Arrays.fill(recentlyFlippedTiles, EMPTY_VAL);
+
+        write_notRead_enable = true;
+        dataToArduino = "101"; //New game message to Arduino
+        //androidWrite("101");
     }
 
     private void initializeTiles() {
@@ -381,11 +448,11 @@ public class MainActivity extends AppCompatActivity {
         return array;
     }
 
-    public void monitorTiles(View v){ //TODO
+    public void monitorTiles(View v){ //Listens to which buttons are flipped
         int tileID = v.getId();
         ImageButton currentTile = (ImageButton) findViewById(tileID);
 
-        int whichImage = tileAssignment[imageIDtoIndex(tileID)]-1;
+        int whichImage = tileAssignment[buttonIDtoIndex(tileID)]-1;
 
         if(recentlyFlippedTiles[0] == EMPTY_VAL){ //Current tile is first tile flipped
             recentlyFlippedTiles[0] = tileID;
@@ -397,13 +464,13 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if(howManyTilesFlipped() == 8){
-            tilesActive[imageIDtoIndex(recentlyFlippedTiles[0])] = false;
+            tilesActive[buttonIDtoIndex(recentlyFlippedTiles[0])] = false;
             gameOver = true;
         }
 
     }
 
-    private int imageIDtoIndex(int id){
+    private int buttonIDtoIndex(int id){ //Gets the ImageButton's location in the tile grid (index)
         for(int i = 0; i < tileArray.length; i++){
             if(id == tileArray[i]){
                 return i;
@@ -426,23 +493,50 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    public void gameControlButtonSentry(String message){ //Controlled on Arduino
+        if( (currentPlayer && message.equals("35")) || (!currentPlayer && message.equals("67")) ){
+            tileFlipManagement();
+
+            recentlyFlippedTiles[0] = recentlyFlippedTiles[1] = EMPTY_VAL;
+        }
+
+    }
+
     private void tileFlipManagement(){
         int firstTileFlippedID, secondTileFlippedID;
-        ImageButton firstTileFlipped;
+        ImageButton firstTileFlipped, secondTileFlipped;
 
         firstTileFlippedID = recentlyFlippedTiles[0];
         secondTileFlippedID = recentlyFlippedTiles[1];
-
-        firstTileFlipped = (ImageButton) findViewById(firstTileFlippedID);
 
         if(gameOver){
             askReplay();
         }
         else{
-            if(recentlyFlippedTiles[1] == EMPTY_VAL){
-                firstTileFlipped.setBackgroundResource(UNFLIPPED_IMAGE_ID);
-                recentlyFlippedTiles[0] = EMPTY_VAL;
+
+            if(timeOut){
+                playerChange();
+                if(recentlyFlippedTiles[1] != EMPTY_VAL){
+                    firstTileFlipped = (ImageButton) findViewById(firstTileFlippedID);
+                    secondTileFlipped = (ImageButton) findViewById(secondTileFlippedID);
+
+                    firstTileFlipped.setBackgroundResource(UNFLIPPED_IMAGE_ID);
+                    secondTileFlipped.setBackgroundResource(UNFLIPPED_IMAGE_ID);
+
+                    recentlyFlippedTiles[1] = EMPTY_VAL;
+                    recentlyFlippedTiles[0] = EMPTY_VAL;
+
+                } else if(recentlyFlippedTiles[0] != EMPTY_VAL){
+                    firstTileFlipped = (ImageButton) findViewById(firstTileFlippedID);
+                    firstTileFlipped.setBackgroundResource(UNFLIPPED_IMAGE_ID);
+
+                    recentlyFlippedTiles[0] = EMPTY_VAL;
+
+                }
+
+                timeOut = false;
             }
+
             else{
                 checkPair(firstTileFlippedID, secondTileFlippedID);
 
@@ -473,8 +567,8 @@ public class MainActivity extends AppCompatActivity {
         int content1, content2, whichImage1, whichImage2;
         ImageButton ib1, ib2;
 
-        whichImage1 = tileAssignment[imageIDtoIndex(tile1_ID)]-1;
-        whichImage2 = tileAssignment[imageIDtoIndex(tile2_ID)]-1;
+        whichImage1 = tileAssignment[buttonIDtoIndex(tile1_ID)]-1;
+        whichImage2 = tileAssignment[buttonIDtoIndex(tile2_ID)]-1;
 
         content1 = sourceImage[whichImage1];
         content2 = sourceImage[whichImage2];
@@ -484,8 +578,8 @@ public class MainActivity extends AppCompatActivity {
 
         if(content1 == content2){
             increaseScore();
-            tilesActive[imageIDtoIndex(tile1_ID)] = false;
-            tilesActive[imageIDtoIndex(tile2_ID)] = false;
+            tilesActive[buttonIDtoIndex(tile1_ID)] = false;
+            tilesActive[buttonIDtoIndex(tile2_ID)] = false;
         } else{
             ib1.setBackgroundResource(UNFLIPPED_IMAGE_ID);
             ib2.setBackgroundResource(UNFLIPPED_IMAGE_ID);
