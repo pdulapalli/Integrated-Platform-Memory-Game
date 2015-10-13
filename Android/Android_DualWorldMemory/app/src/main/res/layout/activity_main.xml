@@ -188,4 +188,13 @@
         android:layout_alignParentTop="true"
         android:layout_toStartOf="@+id/next_turn_button"
         android:onClick="gameControlButtonSentry"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="DebugOutput"
+        android:id="@+id/debugOut"
+        android:layout_below="@+id/score_valueB"
+        android:layout_alignEnd="@+id/score_labelB" />
 </RelativeLayout>

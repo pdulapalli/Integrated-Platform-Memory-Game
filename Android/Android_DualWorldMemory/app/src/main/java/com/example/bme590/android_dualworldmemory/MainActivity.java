@@ -280,6 +280,52 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /** BEGIN FUNCTIONS TO MANAGE ANDROID/ARDUINO COMMUNICATION **/
+
+    public String androidRead(){
+        if(mInputStream != null){
+            byte[] buffer = new byte[1];
+
+            try{
+                mInputStream.read(buffer);
+            } catch (IOException e){
+                Log.e(TAG, "read failed", e);
+            }
+
+            TextView debugger = (TextView) findViewById(R.id.debugOut);
+            if(buffer[0] > 0){
+                int tee = buffer[0];
+                String sendOut = "" + tee;
+                debugger.setText("wha");
+                debugger.setText(sendOut);
+
+                return sendOut;
+
+            }
+            return "";
+        }
+        else {
+            //blah
+            return "";
+        }
+    }
+
+    public void androidWrite(String dataOut){
+        int i = Integer.parseInt(dataOut);
+        byte[] out = new byte[1];
+        out[0] = (byte) i;
+
+        if(mOutputStream != null){
+            try {
+                mOutputStream.write(out, 0, 1);
+            }
+            catch (IOException e) {
+                Log.e(TAG, "write failed", e);
+            }
+        }
+    }
+
+
     /** BEGIN FUNCTIONS FOR ANDROID GAME CONTROL **/
 
     public void initializeGame(){
