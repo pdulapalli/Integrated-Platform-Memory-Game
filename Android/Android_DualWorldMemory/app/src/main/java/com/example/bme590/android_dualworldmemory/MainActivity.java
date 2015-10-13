@@ -520,8 +520,10 @@ public class MainActivity extends AppCompatActivity {
                     firstTileFlipped = (ImageButton) findViewById(firstTileFlippedID);
                     secondTileFlipped = (ImageButton) findViewById(secondTileFlippedID);
 
-                    firstTileFlipped.setBackgroundResource(UNFLIPPED_IMAGE_ID);
-                    secondTileFlipped.setBackgroundResource(UNFLIPPED_IMAGE_ID);
+                    //firstTileFlipped.setBackgroundResource(UNFLIPPED_IMAGE_ID);
+                    //secondTileFlipped.setBackgroundResource(UNFLIPPED_IMAGE_ID);
+
+                    checkPair(firstTileFlippedID, secondTileFlippedID);
 
                     recentlyFlippedTiles[1] = EMPTY_VAL;
                     recentlyFlippedTiles[0] = EMPTY_VAL;

@@ -137,6 +137,7 @@ void loop(){
 
             if (len > 0) {
                 if (msg[0] == 99){
+                  Serial.println("I read a message from android");
                   break;
                 }
             }
