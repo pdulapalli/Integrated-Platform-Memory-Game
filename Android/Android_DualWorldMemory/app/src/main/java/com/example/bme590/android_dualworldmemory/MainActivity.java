@@ -9,7 +9,6 @@ import android.graphics.ColorFilter;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.media.Image;
-import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.ImageButton;
@@ -51,6 +50,7 @@ import android.widget.ToggleButton;
 
 import android.hardware.usb.UsbManager;
 import android.hardware.usb.UsbAccessory;
+import android.support.v7.app.AppCompatActivity;
 
 import org.w3c.dom.Text;
 
@@ -318,6 +318,14 @@ public class MainActivity extends AppCompatActivity {
     public void communicateWithArduino(){ //Periodically called to handle reads/writes
         if(write_notRead_enable){
             androidWrite(dataToArduino);
+            if(dataToArduino.equals("101")){
+                initializeGame();
+            }/*else if(dataToArduino.equals("35")||dataToArduino.equals("67")||dataToArduino.equals("40")){
+                askReplay();
+            }else if(dataToArduino.equals("83")){
+                tileFlipManagement();
+            }*/
+
         } else{
             //TextView tv = (TextView) findViewById(R.id.debugOut);
             //tv.setText("" + countTest);
@@ -416,8 +424,8 @@ public class MainActivity extends AppCompatActivity {
         Arrays.fill(tilesActive, true);
         Arrays.fill(recentlyFlippedTiles, EMPTY_VAL);
 
-        write_notRead_enable = true;
-        dataToArduino = "101"; //New game message to Arduino
+        //write_notRead_enable = true;
+        //dataToArduino = "101"; //New game message to Arduino
         //androidWrite("101");
     }
 
@@ -464,6 +472,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if(howManyTilesFlipped() == 8){
+            /*TextView debugger = (TextView) findViewById(R.id.debugOut);
+            debugger.setText("game over");*/
             tilesActive[buttonIDtoIndex(recentlyFlippedTiles[0])] = false;
             gameOver = true;
         }
@@ -483,9 +493,13 @@ public class MainActivity extends AppCompatActivity {
         int buttonID = v.getId();
 
         if(buttonID == NEW_GAME_BUTTON_ID){ //TODO: Add Arduino command to restart game
-            initializeGame();
+            //initializeGame();
+            write_notRead_enable=true;
+            dataToArduino="101";
 
         } else if(buttonID == NEXT_TURN_BUTTON_ID){ //TODO: Add Arduino command for next turn
+            //write_notRead_enable=true;
+            //dataToArduino="83";
             tileFlipManagement();
         }
 
@@ -510,7 +524,17 @@ public class MainActivity extends AppCompatActivity {
         secondTileFlippedID = recentlyFlippedTiles[1];
 
         if(gameOver){
-            askReplay();
+            if(scoreA>scoreB){
+                write_notRead_enable=true;
+                dataToArduino="35";
+            }else if(scoreB>scoreA){
+                write_notRead_enable=true;
+                dataToArduino="67";
+            }else{
+                write_notRead_enable=true;
+                dataToArduino="40";
+            }
+            //askReplay();
         }
         else{
 
@@ -592,7 +616,7 @@ public class MainActivity extends AppCompatActivity {
     public void increaseScore(){
         TextView tv;
 
-        if(currentPlayer){
+        if(!currentPlayer){
             scoreA += 20;
             tv = (TextView) findViewById(PLAYER_A_SCORE_ID);
             tv.setText("" + scoreA);

@@ -1,5 +1,5 @@
 /**Arduino_DualWorldMemory.ino
- * Last Modified: 10/02/2015 (stable)
+ * Last Modified: 10/13/2015
  **/
 
 #include <Wire.h>
@@ -37,7 +37,7 @@
 #define switchtime 5000
 #define turn_duration 3000
 
-boolean whichPlayer, playerChanged;
+boolean whichPlayer, playerChanged, ntbp;
 int buttonValue, lastButtonValue, winner;
 unsigned long turnstart;
 
@@ -82,7 +82,7 @@ void loop(){
     byte msg[1];
 
     if (acc.isConnected()) {
-        Serial.println("Checkpoint A");
+        //Serial.println("Checkpoint A");
         
         int len;
 
@@ -91,32 +91,38 @@ void loop(){
 
         if (len > 0) { //message array: 
                       //1.new game=101 
-                      //2.winner? A=35, B=67 
-                      //3.read receipt=99   
+                      //2.winner? A=35, B=67, tie=40
+                      //3.read receipt=99 
+                      //4.next turn button pushed=83  
                       //pass: 1.player changing? A=35, B=67; 
                       //when game is over, first pass winner, wait, then pass game over or just pass winner
             if (msg[0] == 101){ // compare received data
+                Serial.println("I know to start the game");
                 gameStart();
             }
 
-            if (msg[0] == 35 || msg[0] == 67){
+            if (msg[0] == 35 || msg[0] == 67||msg[0]==40){
                 //winner=msg[0];
+                //Serial.println("I know the game is over");
                 gameConclude(msg[0]);
             }
 
-            if (msg[0] == 99){
-                //gameConclude(winner);
+            if (msg[0] == 83){
+                //Serial.println("I know to change turns");
+                ntbp=true;
+            }else{
+              delay(10);
             }
 
-            Serial.println("Data:");
-            Serial.print(msg[0]); //TODO: for debugging only print out certain  messages
+            //Serial.println("Data:");
+            //Serial.println(msg[0]); //TODO: for debugging only print out certain  messages
         }
 
-        Serial.println("Checkpoint B");
+        //Serial.println("Checkpoint B");
 
-        delay(10);
-        Serial.println("Player Changed value = ");
-        Serial.print(playerChanged);
+        
+       // Serial.print("Player Changed value = ");
+        //Serial.println(playerChanged);
 
         //TEST
           /*
@@ -132,12 +138,12 @@ void loop(){
         //END TEST
         
         
-        while (playerChanged){
+        while (playerChanged==1){
             len = acc.read(msg, sizeof(msg), 1);
 
             if (len > 0) {
                 if (msg[0] == 99){
-                  Serial.println("I read a message from android");
+                  //Serial.println("I read a message from android");
                   break;
                 }
             }
@@ -145,22 +151,19 @@ void loop(){
         }
         
         
-        Serial.println("Checkpoint C");
+        //Serial.println("Checkpoint C");
         
         buttonValue = digitalRead(BUTTON_READ);
         checkChangeLED();
 
-        Serial.println("Checkpoint D");
+        //Serial.println("Checkpoint D");
         lastButtonValue = buttonValue;
         delay(10);
 
     }
 
     else{ //tablet not connected
-        digitalWrite(GREEN_LED , HIGH); // turn off lights
-        digitalWrite(WHITE_LED , HIGH);
-        digitalWrite(YELLOW_LED , HIGH);
-        delay(10);
+        
         digitalWrite(GREEN_LED , LOW); // turn off lights
         digitalWrite(WHITE_LED , LOW);
         digitalWrite(YELLOW_LED , LOW);
@@ -176,6 +179,7 @@ void gameStart(){
     turnstart = millis();
     playerChanged = 0;
     playerID = 35;
+    ntbp=false;
 
     digitalWrite(GREEN_LED, HIGH);
     note(BUZZ_PWR, Note_A_sharp, 55, 400);
@@ -198,13 +202,22 @@ void checkChangeLED(){
         //HERE pass message to android that player changed ***************************
     }
 
-    else if( buttonValue && !lastButtonValue ){
+    else if( ntbp ){
+        //Serial.println("I am acting on your next turn request");
+        tone(BUZZ_PWR, 120, 100);
+        whichPlayer = !whichPlayer;
+        turnstart = millis();
+        playerChanged = 0;
+        ntbp=false;
+    }
+
+    /*else if( buttonValue && !lastButtonValue ){
         tone(BUZZ_PWR, 120, 100);
         whichPlayer = !whichPlayer;
         turnstart = millis();
         playerChanged = 1;
         //HERE pass message to android that player changed *************************
-    }
+    }*/
 
     else{
         playerChanged = 0;          
@@ -230,11 +243,17 @@ void gameConclude(int winner){
     if(winner == 35){ //Green = p1, White = p2
         digitalWrite(WHITE_LED, HIGH);
         digitalWrite(GREEN_LED, LOW);
+        digitalWrite(YELLOW_LED, HIGH);
     }
 
-   else{
+   else if(winner==67){
         digitalWrite(GREEN_LED, HIGH);
         digitalWrite(WHITE_LED, LOW);
+        digitalWrite(YELLOW_LED, HIGH);
+    }else{
+        digitalWrite(GREEN_LED, HIGH);
+        digitalWrite(WHITE_LED, HIGH);
+        digitalWrite(YELLOW_LED, HIGH);
     }
 
     delay(3000);
@@ -259,5 +278,3 @@ void note(int buzzerPin, int numHalfSteps, int key, int duration){
 
     tone(buzzerPin, out_freq, duration);
 }
-
-
